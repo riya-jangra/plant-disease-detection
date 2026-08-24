@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Plant Disease Detection</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>🌿 Plant Disease Detection</h1>
+
+        <p class="subtitle">
+            Upload a plant leaf image to detect possible diseases using AI.
+        </p>
+
+        <form action="/predict" method="POST" enctype="multipart/form-data">
+
+            <div class="upload-box">
+                <label for="file">Choose a leaf image</label>
+                <input
+                    type="file"
+                    id="file"
+                    name="file"
+                    accept="image/*"
+                    required
+                >
+            </div>
+
+            <button type="submit">
+                🔍 Predict Disease
+            </button>
+
+        </form>
+
+        {% if prediction %}
+        <div class="result">
+
+            <h2>🌿 Prediction Result</h2>
+
+            <p>
+                <strong>Disease:</strong>
+                {{ prediction }}
+            </p>
+
+            {% if confidence %}
+            <p>
+                <strong>Confidence:</strong>
+                {{ confidence }}%
+            </p>
+            {% endif %}
+
+            {% if description %}
+            <div class="info">
+                <h3>📋 Description</h3>
+                <p>{{ description }}</p>
+            </div>
+            {% endif %}
+
+            {% if remedies %}
+            <div class="info">
+                <h3>💊 Remedies</h3>
+                <p>{{ remedies }}</p>
+            </div>
+            {% endif %}
+
+            {% if prevention %}
+            <div class="info">
+                <h3>🛡️ Prevention</h3>
+                <p>{{ prevention }}</p>
+            </div>
+            {% endif %}
+
+        </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>
