@@ -8,7 +8,7 @@ import os
 app = Flask(__name__)
 
 # Load trained model
-model = tf.keras.models.load_model("/content/plant_disease_web/plant_disease_model.keras")
+model = tf.keras.models.load_model("plant_disease_model.keras")
 
 # Disease classes
 class_names = [
