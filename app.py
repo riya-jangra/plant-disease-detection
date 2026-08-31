@@ -8,7 +8,12 @@ import os
 app = Flask(__name__)
 
 # Load trained model
-model = tf.keras.models.load_model("plant_disease_model.keras")
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "plant_disease_model.keras")
+
+model = tf.keras.models.load_model(MODEL_PATH)
 
 # Disease classes
 class_names = [
