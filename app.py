@@ -6,19 +6,28 @@ import os
 
 app = Flask(__name__)
 
-# ==============================
-# Load trained model
-# ==============================
-
+# -----------------------------
+# Paths
+# -----------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MODEL_PATH = os.path.join(BASE_DIR, "plant_disease_model.keras")
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# -----------------------------
+# Load model
+# -----------------------------
+print("Loading model from:", MODEL_PATH)
 
 model = tf.keras.models.load_model(MODEL_PATH)
 
-# ==============================
-# Disease classes
-# ==============================
+print("Model loaded successfully!")
 
+# -----------------------------
+# Disease classes
+# -----------------------------
 class_names = [
     'Apple___Apple_scab',
     'Apple___Black_rot',
@@ -60,86 +69,72 @@ class_names = [
     'Tomato___healthy'
 ]
 
-# ==============================
-# Upload folder
-# ==============================
-
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
-
-# ==============================
+# -----------------------------
 # Home page
-# ==============================
-
+# -----------------------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ==============================
+# -----------------------------
 # Prediction
-# ==============================
-
+# -----------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    file = request.files.get("file")
+    if "image" not in request.files:
+        return "No image uploaded."
 
-    if file is None or file.filename == "":
-        return "No image selected"
+    file = request.files["image"]
 
-    filepath = os.path.join(
-        app.config["UPLOAD_FOLDER"],
-        file.filename
-    )
+    if file.filename == "":
+        return "No image selected."
 
-    file.save(filepath)
+    try:
+        # Open image directly
+        image = Image.open(file).convert("RGB")
 
-    # Open and resize image
-    image = Image.open(filepath).convert("RGB")
-    image = image.resize((224, 224))
+        # Resize
+        image = image.resize((224, 224))
 
-    # Convert image to array
-    image_array = np.array(image)
-    image_array = np.expand_dims(image_array, axis=0)
+        # Convert to numpy
+        image_array = np.asarray(image, dtype=np.float32)
 
-    # Prediction
-    predictions = model.predict(image_array, verbose=0)
+        # Add batch dimension
+        image_array = np.expand_dims(image_array, axis=0)
 
-    predicted_index = np.argmax(predictions[0])
-    predicted_class = class_names[predicted_index]
-    confidence = predictions[0][predicted_index] * 100
+        # Prediction
+        predictions = model.predict(image_array, verbose=0)
 
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Prediction Result</title>
-    </head>
+        predicted_index = int(np.argmax(predictions[0]))
+        predicted_class = class_names[predicted_index]
+        confidence = float(predictions[0][predicted_index]) * 100
 
-    <body style="font-family: Arial; text-align: center; padding: 50px;">
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Prediction Result</title>
+        </head>
+        <body>
+            <h1>Plant Disease Detection Result</h1>
+            <h2>Disease: {predicted_class}</h2>
+            <h2>Confidence: {confidence:.2f}%</h2>
+            <br>
+            <a href="/">Check another image</a>
+        </body>
+        </html>
+        """
 
-        <h1>🌿 Plant Disease Detection Result</h1>
-
-        <h2>Disease: {predicted_class}</h2>
-
-        <h2>Confidence: {confidence:.2f}%</h2>
-
-        <br>
-
-        <a href="/">Check another image</a>
-
-    </body>
-    </html>
-    """
+    except Exception as e:
+        print("Prediction error:", str(e))
+        return f"Prediction error: {str(e)}", 500
 
 
-# ==============================
-# Run application
-# ==============================
-
+# -----------------------------
+# Run app
+# -----------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
