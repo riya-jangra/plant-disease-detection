@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request
 import tensorflow as tf
 import numpy as np
@@ -7,15 +6,19 @@ import os
 
 app = Flask(__name__)
 
+# ==============================
 # Load trained model
-import os
+# ==============================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "plant_disease_model.keras")
 
 model = tf.keras.models.load_model(MODEL_PATH)
 
+# ==============================
 # Disease classes
+# ==============================
+
 class_names = [
     'Apple___Apple_scab',
     'Apple___Black_rot',
@@ -57,25 +60,42 @@ class_names = [
     'Tomato___healthy'
 ]
 
+# ==============================
 # Upload folder
-UPLOAD_FOLDER = "/content/plant_disease_web/uploads"
+# ==============================
+
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+
+# ==============================
+# Home page
+# ==============================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
+# ==============================
+# Prediction
+# ==============================
+
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    file = request.files["image"]
+    file = request.files.get("file")
 
-    if file.filename == "":
+    if file is None or file.filename == "":
         return "No image selected"
 
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        file.filename
+    )
+
     file.save(filepath)
 
     # Open and resize image
@@ -94,13 +114,32 @@ def predict():
     confidence = predictions[0][predicted_index] * 100
 
     return f"""
-    <h1>Plant Disease Detection Result</h1>
-    <h2>Disease: {predicted_class}</h2>
-    <h2>Confidence: {confidence:.2f}%</h2>
-    <br>
-    <a href="/">Check another image</a>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Prediction Result</title>
+    </head>
+
+    <body style="font-family: Arial; text-align: center; padding: 50px;">
+
+        <h1>🌿 Plant Disease Detection Result</h1>
+
+        <h2>Disease: {predicted_class}</h2>
+
+        <h2>Confidence: {confidence:.2f}%</h2>
+
+        <br>
+
+        <a href="/">Check another image</a>
+
+    </body>
+    </html>
     """
 
 
+# ==============================
+# Run application
+# ==============================
+
 if __name__ == "__main__":
-    app.run(port=5000)
+    app.run(host="0.0.0.0", port=5000)
