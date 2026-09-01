@@ -1,12 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Plant Disease Detector</title>
+    <title>Plant Disease Detection</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -15,11 +12,9 @@
 
     <div class="container">
 
-        <h1>🌿 Plant Disease Detector</h1>
+        <h1>🌿 Plant Disease Detection</h1>
 
-        <p class="subtitle">
-            Upload a plant leaf image to detect possible diseases
-        </p>
+        <p>Upload a plant leaf image to detect its disease.</p>
 
         <form action="/predict" method="POST" enctype="multipart/form-data">
 
@@ -30,14 +25,13 @@
                 required
             >
 
-            <button type="submit">
-                🔍 Predict Disease
-            </button>
+            <br><br>
+
+            <button type="submit">Predict Disease</button>
 
         </form>
 
     </div>
 
 </body>
-
 </html>
