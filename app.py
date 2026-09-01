@@ -6,28 +6,43 @@ import os
 
 app = Flask(__name__)
 
-# -----------------------------
-# Paths
-# -----------------------------
+# ==========================================
+# PATHS
+# ==========================================
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_PATH = os.path.join(BASE_DIR, "plant_disease_model.keras")
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "plant_disease_model(3).keras"
+)
 
+# Temporary upload folder
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# -----------------------------
-# Load model
-# -----------------------------
-print("Loading model from:", MODEL_PATH)
+
+# ==========================================
+# LOAD MODEL
+# ==========================================
+
+print("Loading model from:")
+print(MODEL_PATH)
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(
+        f"Model file not found: {MODEL_PATH}"
+    )
 
 model = tf.keras.models.load_model(MODEL_PATH)
 
 print("Model loaded successfully!")
 
-# -----------------------------
-# Disease classes
-# -----------------------------
+
+# ==========================================
+# DISEASE CLASSES
+# ==========================================
+
 class_names = [
     'Apple___Apple_scab',
     'Apple___Black_rot',
@@ -69,38 +84,60 @@ class_names = [
     'Tomato___healthy'
 ]
 
-# -----------------------------
-# Home page
-# -----------------------------
+
+# ==========================================
+# HOME PAGE
+# ==========================================
+
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# -----------------------------
-# Prediction
-# -----------------------------
+# ==========================================
+# PREDICTION
+# ==========================================
+
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    print("Received files:", request.files)
+    print("================================")
+    print("PREDICT REQUEST RECEIVED")
+    print("Files received:", request.files)
+    print("File field names:", list(request.files.keys()))
+    print("================================")
 
+    # Check whether any file was received
     if not request.files:
         return """
-        <h2>No file was received by the server.</h2>
-        <p>Please go back and select an image again.</p>
+        <h2>No file received by Flask.</h2>
+        <p>Please go back and select an image.</p>
         <a href="/">Go Back</a>
         """
 
+    # Get image
     file = request.files.get("image")
 
+    # If image field is missing
     if file is None:
-        return """
+
+        return f"""
         <h2>Image field not found.</h2>
+
         <p>The uploaded file field is missing.</p>
+
+        <p><b>Received file fields:</b>
+        {list(request.files.keys())}</p>
+
+        <p><b>Received form fields:</b>
+        {list(request.form.keys())}</p>
+
+        <br>
+
         <a href="/">Go Back</a>
         """
 
+    # Check filename
     if file.filename == "":
         return """
         <h2>No image selected.</h2>
@@ -108,65 +145,98 @@ def predict():
         """
 
     try:
-        # Read uploaded image
+
+        print("Image received:", file.filename)
+
+        # ======================================
+        # OPEN IMAGE
+        # ======================================
+
         image = Image.open(file).convert("RGB")
 
-        # Resize to model input size
+        print("Image opened successfully.")
+
+        # ======================================
+        # RESIZE
+        # ======================================
+
         image = image.resize((224, 224))
 
-        # Convert to numpy array
-        image_array = np.array(image, dtype=np.float32)
+        # ======================================
+        # CONVERT TO NUMPY
+        # ======================================
 
-        # Normalize pixel values
+        image_array = np.array(
+            image,
+            dtype=np.float32
+        )
+
+        # Normalize pixels
         image_array = image_array / 255.0
 
         # Add batch dimension
-        image_array = np.expand_dims(image_array, axis=0)
+        image_array = np.expand_dims(
+            image_array,
+            axis=0
+        )
 
         print("Starting prediction...")
 
-        predictions = model.predict(image_array, verbose=0)
+        # ======================================
+        # MODEL PREDICTION
+        # ======================================
 
-        print("Prediction completed!")
+        predictions = model.predict(
+            image_array,
+            verbose=0
+        )
 
-        predicted_index = int(np.argmax(predictions[0]))
-        predicted_class = class_names[predicted_index]
-        confidence = float(predictions[0][predicted_index]) * 100
+        print("Prediction completed.")
+
+        # ======================================
+        # GET RESULT
+        # ======================================
+
+        predicted_index = int(
+            np.argmax(predictions[0])
+        )
+
+        predicted_class = class_names[
+            predicted_index
+        ]
+
+        confidence = float(
+            predictions[0][predicted_index]
+        ) * 100
+
+        print("Disease:", predicted_class)
+        print("Confidence:", confidence)
+
+        # ======================================
+        # RESULT PAGE
+        # ======================================
 
         return f"""
         <!DOCTYPE html>
+
         <html>
+
         <head>
+
             <title>Prediction Result</title>
-        </head>
 
-        <body>
+            <style>
 
-            <h1>🌿 Plant Disease Detection Result</h1>
+                body {{
+                    font-family: Arial;
+                    text-align: center;
+                    padding-top: 50px;
+                }}
 
-            <h2>Disease: {predicted_class}</h2>
+                h1 {{
+                    color: green;
+                }}
 
-            <h2>Confidence: {confidence:.2f}%</h2>
-
-            <br>
-
-            <a href="/">Check another image</a>
-
-        </body>
-        </html>
-        """
-
-    except Exception as e:
-
-        print("Prediction error:", repr(e))
-
-        return f"""
-        <h2>Prediction Error</h2>
-        <p>{str(e)}</p>
-        <br>
-        <a href="/">Go Back</a>
-        """, 500
-# -----------------------------
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+                .result {{
+                    margin: auto;
+                    padding: 
