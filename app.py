@@ -83,29 +83,51 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    if "image" not in request.files:
-        return "No image uploaded."
+    print("Received files:", request.files)
 
-    file = request.files["image"]
+    if not request.files:
+        return """
+        <h2>No file was received by the server.</h2>
+        <p>Please go back and select an image again.</p>
+        <a href="/">Go Back</a>
+        """
+
+    file = request.files.get("image")
+
+    if file is None:
+        return """
+        <h2>Image field not found.</h2>
+        <p>The uploaded file field is missing.</p>
+        <a href="/">Go Back</a>
+        """
 
     if file.filename == "":
-        return "No image selected."
+        return """
+        <h2>No image selected.</h2>
+        <a href="/">Go Back</a>
+        """
 
     try:
-        # Open image directly
+        # Read uploaded image
         image = Image.open(file).convert("RGB")
 
-        # Resize
+        # Resize to model input size
         image = image.resize((224, 224))
 
-        # Convert to numpy
-        image_array = np.asarray(image, dtype=np.float32)
+        # Convert to numpy array
+        image_array = np.array(image, dtype=np.float32)
+
+        # Normalize pixel values
+        image_array = image_array / 255.0
 
         # Add batch dimension
         image_array = np.expand_dims(image_array, axis=0)
 
-        # Prediction
+        print("Starting prediction...")
+
         predictions = model.predict(image_array, verbose=0)
+
+        print("Prediction completed!")
 
         predicted_index = int(np.argmax(predictions[0]))
         predicted_class = class_names[predicted_index]
@@ -117,23 +139,33 @@ def predict():
         <head>
             <title>Prediction Result</title>
         </head>
+
         <body>
-            <h1>Plant Disease Detection Result</h1>
+
+            <h1>🌿 Plant Disease Detection Result</h1>
+
             <h2>Disease: {predicted_class}</h2>
+
             <h2>Confidence: {confidence:.2f}%</h2>
+
             <br>
+
             <a href="/">Check another image</a>
+
         </body>
         </html>
         """
 
     except Exception as e:
-        print("Prediction error:", str(e))
-        return f"Prediction error: {str(e)}", 500
 
+        print("Prediction error:", repr(e))
 
-# -----------------------------
-# Run app
+        return f"""
+        <h2>Prediction Error</h2>
+        <p>{str(e)}</p>
+        <br>
+        <a href="/">Go Back</a>
+        """, 500
 # -----------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
