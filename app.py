@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_PATH = os.path.join(BASE_DIR, "plant_disease_model(3).keras")
+MODEL_PATH = os.path.join(BASE_DIR, "plant_disease_model.keras")
 
 print("Loading model from:", MODEL_PATH)
 
