@@ -71,10 +71,10 @@ def predict():
 
     print("FILES:", request.files)
 
-    if "image" not in request.files:
+    if "file" not in request.files:
         return "No image uploaded. Received fields: " + str(list(request.files.keys()))
 
-    file = request.files["image"]
+    file = request.files["file"]
 
     if file.filename == "":
         return "No image selected."
