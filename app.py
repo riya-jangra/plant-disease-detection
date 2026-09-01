@@ -6,42 +6,18 @@ import os
 
 app = Flask(__name__)
 
-# ==========================================
-# PATHS
-# ==========================================
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_PATH = os.path.join(
-    BASE_DIR,
-    "plant_disease_model(3).keras"
-)
+MODEL_PATH = os.path.join(BASE_DIR, "plant_disease_model(3).keras")
 
-# Temporary upload folder
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-
-# ==========================================
-# LOAD MODEL
-# ==========================================
-
-print("Loading model from:")
-print(MODEL_PATH)
+print("Loading model from:", MODEL_PATH)
 
 if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(
-        f"Model file not found: {MODEL_PATH}"
-    )
+    raise FileNotFoundError("Model file not found: " + MODEL_PATH)
 
 model = tf.keras.models.load_model(MODEL_PATH)
 
 print("Model loaded successfully!")
-
-
-# ==========================================
-# DISEASE CLASSES
-# ==========================================
 
 class_names = [
     'Apple___Apple_scab',
@@ -85,158 +61,57 @@ class_names = [
 ]
 
 
-# ==========================================
-# HOME PAGE
-# ==========================================
-
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ==========================================
-# PREDICTION
-# ==========================================
-
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    print("================================")
-    print("PREDICT REQUEST RECEIVED")
-    print("Files received:", request.files)
-    print("File field names:", list(request.files.keys()))
-    print("================================")
+    print("FILES:", request.files)
 
-    # Check whether any file was received
-    if not request.files:
-        return """
-        <h2>No file received by Flask.</h2>
-        <p>Please go back and select an image.</p>
-        <a href="/">Go Back</a>
-        """
+    if "image" not in request.files:
+        return "No image uploaded. Received fields: " + str(list(request.files.keys()))
 
-    # Get image
-    file = request.files.get("image")
+    file = request.files["image"]
 
-    # If image field is missing
-    if file is None:
-
-        return f"""
-        <h2>Image field not found.</h2>
-
-        <p>The uploaded file field is missing.</p>
-
-        <p><b>Received file fields:</b>
-        {list(request.files.keys())}</p>
-
-        <p><b>Received form fields:</b>
-        {list(request.form.keys())}</p>
-
-        <br>
-
-        <a href="/">Go Back</a>
-        """
-
-    # Check filename
     if file.filename == "":
-        return """
-        <h2>No image selected.</h2>
-        <a href="/">Go Back</a>
-        """
+        return "No image selected."
 
     try:
-
-        print("Image received:", file.filename)
-
-        # ======================================
-        # OPEN IMAGE
-        # ======================================
-
         image = Image.open(file).convert("RGB")
-
-        print("Image opened successfully.")
-
-        # ======================================
-        # RESIZE
-        # ======================================
-
         image = image.resize((224, 224))
 
-        # ======================================
-        # CONVERT TO NUMPY
-        # ======================================
-
-        image_array = np.array(
-            image,
-            dtype=np.float32
-        )
-
-        # Normalize pixels
+        image_array = np.array(image, dtype=np.float32)
         image_array = image_array / 255.0
+        image_array = np.expand_dims(image_array, axis=0)
 
-        # Add batch dimension
-        image_array = np.expand_dims(
-            image_array,
-            axis=0
+        predictions = model.predict(image_array, verbose=0)
+
+        predicted_index = int(np.argmax(predictions[0]))
+        predicted_class = class_names[predicted_index]
+
+        confidence = float(predictions[0][predicted_index]) * 100
+
+        return (
+            "<html>"
+            "<head><title>Prediction Result</title></head>"
+            "<body style='font-family:Arial;text-align:center;padding:50px;'>"
+            "<h1>🌿 Plant Disease Detection Result</h1>"
+            "<h2>Disease: " + predicted_class + "</h2>"
+            "<h2>Confidence: " + f"{confidence:.2f}" + "%</h2>"
+            "<br>"
+            "<a href='/'>Check another image</a>"
+            "</body>"
+            "</html>"
         )
 
-        print("Starting prediction...")
+    except Exception as e:
+        print("Prediction error:", repr(e))
+        return "Prediction error: " + str(e), 500
 
-        # ======================================
-        # MODEL PREDICTION
-        # ======================================
 
-        predictions = model.predict(
-            image_array,
-            verbose=0
-        )
-
-        print("Prediction completed.")
-
-        # ======================================
-        # GET RESULT
-        # ======================================
-
-        predicted_index = int(
-            np.argmax(predictions[0])
-        )
-
-        predicted_class = class_names[
-            predicted_index
-        ]
-
-        confidence = float(
-            predictions[0][predicted_index]
-        ) * 100
-
-        print("Disease:", predicted_class)
-        print("Confidence:", confidence)
-
-        # ======================================
-        # RESULT PAGE
-        # ======================================
-
-        return f"""
-        <!DOCTYPE html>
-
-        <html>
-
-        <head>
-
-            <title>Prediction Result</title>
-
-            <style>
-
-                body {{
-                    font-family: Arial;
-                    text-align: center;
-                    padding-top: 50px;
-                }}
-
-                h1 {{
-                    color: green;
-                }}
-
-                .result {{
-                    margin: auto;
-                    padding: 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
